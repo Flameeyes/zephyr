@@ -21,5 +21,6 @@ config MFD_INIT_PRIORITY
 source "drivers/mfd/Kconfig.axp192"
 source "drivers/mfd/Kconfig.npm1300"
 source "drivers/mfd/Kconfig.npm6001"
+source "drivers/mfd/Kconfig.upd350"
 
 endif # MFD

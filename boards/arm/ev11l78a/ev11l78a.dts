@@ -75,6 +75,14 @@
 
 	pinctrl-0 = <&sercom0_spi_default>;
 	pinctrl-names = "default";
+
+	upd350: upd350@0 {
+		compatible = "microchip,upd350";
+		reset-gpios = <&porta 0 GPIO_ACTIVE_LOW>;
+
+		reg = <0x0>;
+		spi-max-frequency = <DT_FREQ_M(12)>;
+	};
 };
 
 &sercom1 {

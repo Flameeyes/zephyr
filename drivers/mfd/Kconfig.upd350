@@ -1,0 +1,24 @@
+# Copyright (c) 2023, Meta Platforms, Inc. and its affiliates.
+# SPDX -License-Identifier: Apache-2.0
+
+config MFD_UPD350
+	bool "Microchip UPD350 multi-function device driver"
+	depends on GPIO
+	help
+	  Enable the Microchip UPD350 PMIC multi-function device driver
+
+config MFD_UPD350_SPI
+	bool "Enable SPI transport for UDP350 (B/D)"
+	default y
+	depends on DT_HAS_MICROCHIP_UPD350_ENABLED && SPI
+	select MFD_UPD350
+
+if MFD_UPD350_SPI
+
+config MFD_UPD350_SPI_INIT_PRIORITY
+	int "Init priority"
+	default 75
+	help
+	  Device driver initialization priority.
+
+endif #MFD_UPD350_SPI

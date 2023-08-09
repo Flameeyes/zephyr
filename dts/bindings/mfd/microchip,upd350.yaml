@@ -1,0 +1,15 @@
+# Copyright (c) 2023, Meta Platforms, Inc. and its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  SPI-connected UPD350 USB Power Delivery 3.0 Port Controller.
+
+compatible: "microchip,upd350"
+
+include: [spi-device.yaml]
+
+properties:
+  reset-gpios:
+    type: phandle-array
+    description: |
+        GPIO connected to the controller RESET pin. This pin is active-low.

@@ -1,0 +1,17 @@
+# Copyright (c) 2023, Meta Platforms, Inc. and its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+
+config USBC_TCPC_UPD350
+	bool "USB-C TCPC device controller driver for UPD350"
+	default y
+	depends on DT_HAS_MICROCHIP_UPD350_TCPC_ENABLED
+
+if USBC_TCPC_UPD350
+
+config USBC_TCPC_UPD350_INIT_PRIORITY
+	int "Init priority"
+	default 80
+	help
+	  Device driver initialization priority.
+
+endif #USBC_TCPC_UPD350

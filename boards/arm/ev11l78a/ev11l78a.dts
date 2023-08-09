@@ -82,6 +82,10 @@
 
 		reg = <0x0>;
 		spi-max-frequency = <DT_FREQ_M(12)>;
+
+		tcpc: tcpc {
+			compatible = "microchip,upd350_tcpc";
+		};
 	};
 };
 

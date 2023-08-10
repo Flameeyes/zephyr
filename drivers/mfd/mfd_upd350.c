@@ -17,9 +17,9 @@ LOG_MODULE_REGISTER(mfd_upd350);
 #define FASTREAD_CMD 0x0B
 #define WRITE_CMD    0x02
 
-#define FASTREAD_DIR_INC    0x00
-#define FASTREAD_DIR_DEC    0x80
-#define FASTREAD_DIR_STATIC 0xC0
+#define DIR_INC    0x00
+#define DIR_DEC    0x80
+#define DIR_STATIC 0xC0
 
 #define SPI_TEST_REG 0x0E
 
@@ -29,10 +29,7 @@ static int upd350_spi_read(const struct device *dev, uint16_t reg, void *buf, si
 	const struct mfd_upd350_config *config = dev->config;
 	int ret;
 
-	uint8_t cmd[4];
-	cmd[0] = FASTREAD_CMD;
-	cmd[1] = ((reg >> 8) & 0x3F) | FASTREAD_DIR_INC;
-	cmd[2] = reg & 0xFF;
+	uint8_t cmd[4] = {FASTREAD_CMD, ((reg >> 8) & 0x3F) | DIR_INC, reg & 0xFF, 0};
 
 	struct spi_buf buffers[] = {{.buf = cmd, .len = 4}, {.buf = buf, .len = len}};
 
@@ -50,6 +47,21 @@ static int upd350_spi_read(const struct device *dev, uint16_t reg, void *buf, si
 
 static int upd350_spi_write(const struct device *dev, uint16_t reg, void *buf, size_t len)
 {
+	const struct mfd_upd350_config *config = dev->config;
+	int ret;
+
+	uint8_t cmd[3] = {WRITE_CMD, ((reg >> 8) & 0x3F) | DIR_INC, reg & 0xFF};
+
+	struct spi_buf buffers[] = {{.buf = cmd, .len = 3}, {.buf = buf, .len = len}};
+
+	const struct spi_buf_set tx = {.buffers = buffers, .count = 2};
+
+	ret = spi_transceive_dt(&config->bus.spi, &tx, NULL);
+	if (ret < 0) {
+		LOG_ERR("spi_transceive FAIL %d", ret);
+		return ret;
+	}
+
 	return 0;
 }
 

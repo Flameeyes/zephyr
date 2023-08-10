@@ -19,6 +19,19 @@ struct tcpc_upd350_config {
 	const struct device *mfd_dev;
 };
 
+struct upd350_cc_ctl_reg {
+	uint16_t ra_detect:1;
+	uint16_t cc_comparator_control:2;
+	uint16_t cc_communication_select:1;
+	uint16_t cc2_rp_value:2;
+	uint16_t cc1_rp_value:2;
+	uint16_t dfp_current_advertisement:2;
+	uint16_t reserved1:1;
+	uint16_t cc2_pull_down_value:2;
+	uint16_t reserved2:1;
+	uint16_t cc1_pull_down_value:2;
+};
+
 static int ucpd_get_cc(const struct device *dev, enum tc_cc_voltage_state *cc1,
 		       enum tc_cc_voltage_state *cc2)
 {
@@ -127,6 +140,8 @@ static int tcpc_upd350_init(const struct device *dev)
 	if (err < 0) {
 		return -ENODEV;
 	}
+
+
 
 	return 0;
 }

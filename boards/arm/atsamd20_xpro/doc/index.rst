@@ -12,9 +12,12 @@ microcontrollers. The kit includes Atmel’s Embedded Debugger (EDBG),
 which provides a full debug interface without the need for additional
 hardware.
 
-.. image:: img/atsamd20_xpro.jpg
-     :align: center
-     :alt: ATSAMD20-XPRO
+.. figure:: img/atsamd20_xpro.jpg
+    :width: 500px
+    :align: center
+    :alt: ATSAMD20-XPRO
+
+    ATSAMD20-XPRO (Credit: `Microchip Technology`_)
 
 Hardware
 ********
@@ -47,6 +50,8 @@ features:
 | GPIO      | on-chip    | I/O ports                                |
 +-----------+------------+------------------------------------------+
 | USART     | on-chip    | Serial ports                             |
++-----------+------------+------------------------------------------+
+| I2C       | on-chip    | I2C ports                                |
 +-----------+------------+------------------------------------------+
 | SPI       | on-chip    | Serial Peripheral Interface ports        |
 +-----------+------------+------------------------------------------+
@@ -132,7 +137,7 @@ References
 
 .. target-notes::
 
-.. _Microchip website:
+.. _Microchip Technology:
     https://www.microchip.com/DevelopmentTools/ProductDetails.aspx?PartNO=ATSAMD20-XPRO
 
 .. _SAM D20 Xplained Pro Schematic:

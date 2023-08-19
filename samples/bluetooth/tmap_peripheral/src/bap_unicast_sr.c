@@ -23,12 +23,12 @@
 #define AVAILABLE_SINK_CONTEXT CONFIG_BT_PACS_SNK_CONTEXT
 #define AVAILABLE_SOURCE_CONTEXT CONFIG_BT_PACS_SRC_CONTEXT
 
-static struct bt_audio_codec_cap lc3_codec_cap =
-	BT_AUDIO_CODEC_LC3(BT_AUDIO_CODEC_LC3_FREQ_16KHZ | BT_AUDIO_CODEC_LC3_FREQ_32KHZ |
-				   BT_AUDIO_CODEC_LC3_FREQ_48KHZ,
-			   BT_AUDIO_CODEC_LC3_DURATION_7_5 | BT_AUDIO_CODEC_LC3_DURATION_10,
-			   BT_AUDIO_CODEC_LC3_CHAN_COUNT_SUPPORT(2), 30, 155u, 1u,
-			   (CONFIG_BT_PACS_SNK_CONTEXT | CONFIG_BT_PACS_SRC_CONTEXT));
+static const struct bt_audio_codec_cap lc3_codec_cap =
+	BT_AUDIO_CODEC_CAP_LC3(BT_AUDIO_CODEC_LC3_FREQ_16KHZ | BT_AUDIO_CODEC_LC3_FREQ_32KHZ |
+				       BT_AUDIO_CODEC_LC3_FREQ_48KHZ,
+			       BT_AUDIO_CODEC_LC3_DURATION_7_5 | BT_AUDIO_CODEC_LC3_DURATION_10,
+			       BT_AUDIO_CODEC_LC3_CHAN_COUNT_SUPPORT(2), 30, 155u, 1u,
+			       (CONFIG_BT_PACS_SNK_CONTEXT | CONFIG_BT_PACS_SRC_CONTEXT));
 
 static struct bt_conn *default_conn;
 static struct bt_bap_stream streams[CONFIG_BT_ASCS_ASE_SNK_COUNT + CONFIG_BT_ASCS_ASE_SRC_COUNT];
@@ -235,8 +235,8 @@ static int lc3_metadata(struct bt_bap_stream *stream, const struct bt_audio_code
 		}
 
 		if (data->data.type == BT_AUDIO_METADATA_TYPE_CCID_LIST) {
-			for (uint8_t i = 0; i < data->data.data_len; i++) {
-				const uint8_t ccid = data->data.data[i];
+			for (uint8_t j = 0; j < data->data.data_len; j++) {
+				const uint8_t ccid = data->data.data[j];
 
 				if (!(IS_ENABLED(CONFIG_BT_TBS_CLIENT_CCID) &&
 					bt_tbs_client_get_by_ccid(default_conn, ccid) != NULL)) {

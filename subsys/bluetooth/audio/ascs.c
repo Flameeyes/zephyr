@@ -63,6 +63,7 @@ static struct bt_ascs_ase {
 	struct k_work_delayable disconnect_work;
 	struct k_work state_transition_work;
 	enum bt_bap_ep_state state_pending;
+	bool unexpected_iso_link_loss;
 } ase_pool[CONFIG_BT_ASCS_MAX_ACTIVE_ASES];
 
 #define MAX_CODEC_CONFIG                                                                           \
@@ -150,7 +151,6 @@ static void ase_status_changed(struct bt_ascs_ase *ase, uint8_t state)
 			const uint8_t att_ntf_header_size = 3; /* opcode (1) + handle (2) */
 			const uint16_t max_ntf_size = bt_gatt_get_mtu(conn) - att_ntf_header_size;
 			uint16_t ntf_size;
-			int err;
 
 			err = k_sem_take(&ase_buf_sem, ASE_BUF_SEM_TIMEOUT);
 			if (err != 0) {
@@ -354,6 +354,10 @@ static void ase_set_state_disabling(struct bt_ascs_ase *ase)
 	if (ops != NULL && ops->disabled != NULL) {
 		ops->disabled(stream);
 	}
+
+	if (ase->unexpected_iso_link_loss) {
+		ascs_ep_set_state(&ase->ep, BT_BAP_EP_STATE_QOS_CONFIGURED);
+	}
 }
 
 static void ase_set_state_releasing(struct bt_ascs_ase *ase)
@@ -399,9 +403,6 @@ static void state_transition_work_handler(struct k_work *work)
 		if (reason == BT_HCI_ERR_SUCCESS) {
 			/* Default to BT_HCI_ERR_UNSPECIFIED if no other reason is set */
 			reason = BT_HCI_ERR_UNSPECIFIED;
-		} else {
-			/* Reset reason */
-			ep->reason = BT_HCI_ERR_SUCCESS;
 		}
 
 		if (ops != NULL && ops->stopped != NULL) {
@@ -823,6 +824,7 @@ static void ascs_update_sdu_size(struct bt_bap_ep *ep)
 
 static void ascs_ep_iso_connected(struct bt_bap_ep *ep)
 {
+	struct bt_ascs_ase *ase = CONTAINER_OF(ep, struct bt_ascs_ase, ep);
 	struct bt_bap_stream *stream;
 
 	if (ep->status.state != BT_BAP_EP_STATE_ENABLING) {
@@ -836,6 +838,10 @@ static void ascs_ep_iso_connected(struct bt_bap_ep *ep)
 		LOG_ERR("No stream for ep %p", ep);
 		return;
 	}
+
+	/* Reset reason */
+	ep->reason = BT_HCI_ERR_SUCCESS;
+	ase->unexpected_iso_link_loss = false;
 
 	/* Some values are not provided by the HCI events when the CIS is established for the
 	 * peripheral, so we update them here based on the parameters provided by the BAP Unicast
@@ -885,30 +891,29 @@ static void ascs_ep_iso_disconnected(struct bt_bap_ep *ep, uint8_t reason)
 
 	LOG_DBG("stream %p ep %p reason 0x%02x", stream, stream->ep, reason);
 
-	if (ep->status.state == BT_BAP_EP_STATE_ENABLING &&
-	    reason == BT_HCI_ERR_CONN_FAIL_TO_ESTAB) {
-		LOG_DBG("Waiting for retry");
-		return;
-	}
-
 	/* Cancel ASE disconnect work if pending */
 	(void)k_work_cancel_delayable(&ase->disconnect_work);
 	ep->reason = reason;
 
 	if (ep->status.state == BT_BAP_EP_STATE_RELEASING) {
 		ascs_ep_set_state(ep, BT_BAP_EP_STATE_IDLE);
-	} else {
+	} else if (ep->status.state == BT_BAP_EP_STATE_STREAMING) {
+		/* CIS has been unexpectedly disconnected */
+		ase->unexpected_iso_link_loss = true;
+
 		/* The ASE state machine goes into different states from this operation
 		 * based on whether it is a source or a sink ASE.
 		 */
-		if (ep->status.state == BT_BAP_EP_STATE_STREAMING ||
-		    ep->status.state == BT_BAP_EP_STATE_ENABLING) {
-			if (ep->dir == BT_AUDIO_DIR_SOURCE) {
-				ascs_ep_set_state(ep, BT_BAP_EP_STATE_DISABLING);
-			} else {
-				ascs_ep_set_state(ep, BT_BAP_EP_STATE_QOS_CONFIGURED);
-			}
+		if (ep->dir == BT_AUDIO_DIR_SOURCE) {
+			ascs_ep_set_state(ep, BT_BAP_EP_STATE_DISABLING);
+		} else {
+			ascs_ep_set_state(ep, BT_BAP_EP_STATE_QOS_CONFIGURED);
 		}
+	} else if (ep->status.state == BT_BAP_EP_STATE_DISABLING) {
+		/* CIS has been unexpectedly disconnected */
+		ase->unexpected_iso_link_loss = true;
+
+		ascs_ep_set_state(ep, BT_BAP_EP_STATE_QOS_CONFIGURED);
 	}
 }
 
@@ -1335,7 +1340,7 @@ struct codec_cap_lookup_id_data {
 	uint8_t id;
 	uint16_t cid;
 	uint16_t vid;
-	struct bt_audio_codec_cap *codec_cap;
+	const struct bt_audio_codec_cap *codec_cap;
 };
 
 static bool codec_lookup_id(const struct bt_pacs_cap *cap, void *user_data)

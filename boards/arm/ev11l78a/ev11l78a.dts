@@ -5,6 +5,7 @@
  */
 
 /dts-v1/;
+#include <mem.h>
 #include <freq.h>
 #include <atmel/samd20.dtsi>
 #include "ev11l78a-pinctrl.dtsi"
@@ -32,6 +33,18 @@
 			gpios = <&porta 23 GPIO_ACTIVE_HIGH>;
 			label = "CAP_MIS";
 		};
+
+		// The following are not LEDs on the board, but rather
+		// testpoints. On the other hand, they are "fit the part."
+		ind_1_5a: led_1 {
+			gpios = <&porta 1 GPIO_ACTIVE_HIGH>;
+			label = "1.5A_IND";
+		};
+
+		ind_3_0a: led_2 {
+			gpios = <&porta 15 GPIO_ACTIVE_HIGH>;
+			label = "3.0A_IND";
+		};
 	};
 
 	csa_i_sense: i_sense {
@@ -39,6 +52,11 @@
 		io-channels = <&adc 5>;
 		sense-resistor-micro-ohms = <4000>;
 		sense-gain-mult = <100>;
+	};
+
+	enable_sink: enable_sink {
+		compatible = "microchip,ev11l78a-ensink";
+		gpios = <&porta 22 GPIO_ACTIVE_HIGH>;
 	};
 
 };
@@ -83,7 +101,13 @@
 	pinctrl-names = "default";
 };
 
+&sram0 {
+	reg = <0x20000000 DT_SIZE_K(8)>;
+};
+
 &flash0 {
+	reg = <0 DT_SIZE_K(64)>;
+
 	partitions {
 		compatible = "fixed-partitions";
 		#address-cells = <1>;
@@ -94,9 +118,9 @@
 		 * Storage partition will be used by FCB/LittleFS/NVS
 		 * if enabled.
 		 */
-		storage_partition: partition@3c000 {
+		storage_partition: partition@c000 {
 			label = "storage";
-			reg = <0x0003c000 0x00004000>;
+			reg = <0x0000c000 DT_SIZE_K(16)>;
 		};
 	};
 };
@@ -118,5 +142,12 @@
 	};
 
 	pinctrl-0 = <&adc_default>;
+	pinctrl-names = "default";
+};
+
+&dac0 {
+	status = "okay";
+
+	pinctrl-0 = <&dac_default>;
 	pinctrl-names = "default";
 };

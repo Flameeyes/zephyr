@@ -54,6 +54,8 @@ features:
 +-----------+------------+------------------------------------------+
 | ADC       | on-chip    | Analog-to-Digital Converter              |
 +-----------+------------+------------------------------------------+
+| DAC       | on-chip    | Digital-to-Analog Converter              |
++-----------+------------+------------------------------------------+
 
 Other hardware features are not currently supported by Zephyr.
 

@@ -8,6 +8,7 @@
 #include <mem.h>
 #include <freq.h>
 #include <atmel/samd20.dtsi>
+#include <atmel/samd2xx16.dtsi>
 #include "ev11l78a-pinctrl.dtsi"
 
 / {

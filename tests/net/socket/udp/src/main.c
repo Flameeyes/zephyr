@@ -58,6 +58,7 @@ static void comm_sendto_recvfrom(int client_sock,
 				 struct sockaddr *server_addr,
 				 socklen_t server_addrlen)
 {
+	int avail;
 	ssize_t sent = 0;
 	ssize_t recved = 0;
 	struct sockaddr addr;
@@ -75,6 +76,12 @@ static void comm_sendto_recvfrom(int client_sock,
 	sent = sendto(client_sock, TEST_STR_SMALL, strlen(TEST_STR_SMALL),
 		      0, server_addr, server_addrlen);
 	zassert_equal(sent, strlen(TEST_STR_SMALL), "sendto failed");
+
+	k_msleep(100);
+
+	avail = 42;
+	zassert_ok(ioctl(server_sock, ZFD_IOCTL_FIONREAD, &avail));
+	zassert_equal(avail, strlen(TEST_STR_SMALL));
 
 	/* Test recvfrom(MSG_PEEK) */
 	addrlen = sizeof(addr);
@@ -1286,4 +1293,13 @@ ZTEST(net_socket_udp, test_23_v6_dgram_overflow)
 			    BUF_AND_SIZE(test_str_all_tx_bufs));
 }
 
-ZTEST_SUITE(net_socket_udp, NULL, NULL, NULL, NULL, NULL);
+static void after(void *arg)
+{
+	ARG_UNUSED(arg);
+
+	for (int i = 0; i < CONFIG_POSIX_MAX_FDS; ++i) {
+		(void)zsock_close(i);
+	}
+}
+
+ZTEST_SUITE(net_socket_udp, NULL, NULL, NULL, after, NULL);

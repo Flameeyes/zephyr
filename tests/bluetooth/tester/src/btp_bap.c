@@ -354,73 +354,29 @@ static int lc3_qos(struct bt_bap_stream *stream, const struct bt_audio_codec_qos
 	return 0;
 }
 
-static int lc3_enable(struct bt_bap_stream *stream, const struct bt_audio_codec_data *meta,
-		      size_t meta_count, struct bt_bap_ascs_rsp *rsp)
-{
-	LOG_DBG("Enable: stream %p meta_count %zu", stream, meta_count);
-
-	return 0;
-}
-
-static int lc3_start(struct bt_bap_stream *stream, struct bt_bap_ascs_rsp *rsp)
-{
-	LOG_DBG("Start: stream %p", stream);
-
-	return 0;
-}
-
 static bool valid_metadata_type(uint8_t type, uint8_t len, const uint8_t *data)
 {
 	/* PTS checks if we are able to reject unsupported metadata type or RFU vale.
 	 * The only RFU value PTS seems to check for now is the streaming context.
 	 */
-	switch (type) {
-	case BT_AUDIO_METADATA_TYPE_PREF_CONTEXT:
-	case BT_AUDIO_METADATA_TYPE_STREAM_CONTEXT:
-		if (len != 2) {
-			return false;
-		}
+	if (!BT_AUDIO_METADATA_TYPE_IS_KNOWN(type)) {
+		return false;
+	}
 
+	if (type == BT_AUDIO_METADATA_TYPE_PREF_CONTEXT ||
+	    type == BT_AUDIO_METADATA_TYPE_STREAM_CONTEXT) {
 		/* PTS wants us to reject the parameter if reserved bits are set */
 		if ((sys_get_le16(data) & ~(uint16_t)(BT_AUDIO_CONTEXT_TYPE_ANY)) > 0) {
 			return false;
 		}
-
-		return true;
-	case BT_AUDIO_METADATA_TYPE_STREAM_LANG:
-		if (len != 3) {
-			return false;
-		}
-
-		return true;
-	case BT_AUDIO_METADATA_TYPE_PARENTAL_RATING:
-		if (len != 1) {
-			return false;
-		}
-
-		return true;
-	case BT_AUDIO_METADATA_TYPE_EXTENDED: /* 2 - 255 octets */
-	case BT_AUDIO_METADATA_TYPE_VENDOR: /* 2 - 255 octets */
-		/* At least Extended Metadata Type / Company_ID should be there */
-		if (len < 2) {
-			return false;
-		}
-
-		return true;
-	case BT_AUDIO_METADATA_TYPE_CCID_LIST:
-	case BT_AUDIO_METADATA_TYPE_PROGRAM_INFO: /* 0 - 255 octets */
-	case BT_AUDIO_METADATA_TYPE_PROGRAM_INFO_URI: /* 0 - 255 octets */
-		return true;
-	default:
-		return false;
 	}
+
+	return true;
 }
 
-static int lc3_metadata(struct bt_bap_stream *stream, const struct bt_audio_codec_data *meta,
-			size_t meta_count, struct bt_bap_ascs_rsp *rsp)
+static int check_metadata(struct bt_bap_stream *stream, const struct bt_audio_codec_data *meta,
+			  size_t meta_count, struct bt_bap_ascs_rsp *rsp, uint8_t opcode)
 {
-	LOG_DBG("Metadata: stream %p meta_count %zu", stream, meta_count);
-
 	for (size_t i = 0; i < meta_count; i++) {
 		const struct bt_audio_codec_data *data = data = &meta[i];
 
@@ -432,14 +388,36 @@ static int lc3_metadata(struct bt_bap_stream *stream, const struct bt_audio_code
 					       data->data.type);
 
 			btp_send_ascs_operation_completed_ev(stream->conn, stream->ep->status.id,
-							     BT_ASCS_METADATA_OP,
-							     BTP_ASCS_STATUS_FAILED);
+							     opcode, BTP_ASCS_STATUS_FAILED);
 
 			return -EINVAL;
 		}
 	}
 
 	return 0;
+}
+
+static int lc3_enable(struct bt_bap_stream *stream, const struct bt_audio_codec_data *meta,
+		      size_t meta_count, struct bt_bap_ascs_rsp *rsp)
+{
+	LOG_DBG("Enable: stream %p meta_count %zu", stream, meta_count);
+
+	return check_metadata(stream, meta, meta_count, rsp, BT_ASCS_ENABLE_OP);
+}
+
+static int lc3_start(struct bt_bap_stream *stream, struct bt_bap_ascs_rsp *rsp)
+{
+	LOG_DBG("Start: stream %p", stream);
+
+	return 0;
+}
+
+static int lc3_metadata(struct bt_bap_stream *stream, const struct bt_audio_codec_data *meta,
+			size_t meta_count, struct bt_bap_ascs_rsp *rsp)
+{
+	LOG_DBG("Metadata: stream %p meta_count %zu", stream, meta_count);
+
+	return check_metadata(stream, meta, meta_count, rsp, BT_ASCS_METADATA_OP);
 }
 
 static int lc3_disable(struct bt_bap_stream *stream, struct bt_bap_ascs_rsp *rsp)

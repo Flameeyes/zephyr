@@ -1879,6 +1879,20 @@ Networking:
   labels:
     - "area: Networking"
 
+"Networking: Connection Manager":
+  status: maintained
+  maintainers:
+    - rlubos
+  collaborators:
+    - glarsennordic
+  files:
+    - include/zephyr/net/conn_mgr*.h
+    - subsys/net/conn_mgr/
+    - tests/net/conn_mgr/
+    - tests/net/conn_mgr_conn/
+  labels:
+    - "area: Networking"
+
 "Networking: CoAP":
   status: maintained
   maintainers:
@@ -3154,7 +3168,9 @@ West:
     - manifest-loramac-node
 
 "West project: lvgl":
-  status: odd fixes
+  status: maintained
+  maintainers:
+    - faxe1008
   collaborators:
     - brgl
     - pdgendt

@@ -5,6 +5,7 @@
  */
 
 /dts-v1/;
+#include <mem.h>
 #include <atmel/samr21.dtsi>
 #include "atsamr21_xpro-pinctrl.dtsi"
 #include <zephyr/dt-bindings/input/input-event-codes.h>
@@ -102,6 +103,14 @@
 
 &cpu0 {
 	clock-frequency = <48000000>;
+};
+
+&sram0 {
+	reg = <0x20000000 DT_SIZE_K(32)>;
+};
+
+&flash0 {
+	reg = <0 DT_SIZE_K(256)>;
 };
 
 &tcc0 {

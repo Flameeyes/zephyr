@@ -525,10 +525,22 @@ int zsock_connect_ctx(struct net_context *ctx, const struct sockaddr *addr,
 			cb = zsock_connected_cb;
 		}
 
-		SET_ERRNO(net_context_recv(ctx, zsock_received_cb, K_NO_WAIT,
-					   ctx->user_data));
-		SET_ERRNO(net_context_connect(ctx, addr, addrlen, cb, timeout,
-					      ctx->user_data));
+		if (net_context_get_type(ctx) == SOCK_STREAM) {
+			/* For STREAM sockets net_context_recv() only installs
+			 * recv callback w/o side effects, and it has to be done
+			 * first to avoid race condition, when TCP stream data
+			 * arrives right after connect.
+			 */
+			SET_ERRNO(net_context_recv(ctx, zsock_received_cb,
+						   K_NO_WAIT, ctx->user_data));
+			SET_ERRNO(net_context_connect(ctx, addr, addrlen, cb,
+						      timeout, ctx->user_data));
+		} else {
+			SET_ERRNO(net_context_connect(ctx, addr, addrlen, cb,
+						      timeout, ctx->user_data));
+			SET_ERRNO(net_context_recv(ctx, zsock_received_cb,
+						   K_NO_WAIT, ctx->user_data));
+		}
 	}
 
 	return 0;
@@ -2253,7 +2265,6 @@ int zsock_setsockopt_ctx(struct net_context *ctx, int level, int optname,
 
 		case SO_BINDTODEVICE: {
 			struct net_if *iface;
-			const struct device *dev;
 			const struct ifreq *ifreq = optval;
 
 			if (net_context_get_family(ctx) != AF_INET &&
@@ -2276,16 +2287,32 @@ int zsock_setsockopt_ctx(struct net_context *ctx, int level, int optname,
 				return -1;
 			}
 
-			dev = device_get_binding(ifreq->ifr_name);
-			if (dev == NULL) {
-				errno = ENODEV;
-				return -1;
-			}
+			if (IS_ENABLED(CONFIG_NET_INTERFACE_NAME)) {
+				ret = net_if_get_by_name(ifreq->ifr_name);
+				if (ret < 0) {
+					errno = -ret;
+					return -1;
+				}
 
-			iface = net_if_lookup_by_dev(dev);
-			if (iface == NULL) {
-				errno = ENODEV;
-				return -1;
+				iface = net_if_get_by_index(ret);
+				if (iface == NULL) {
+					errno = ENODEV;
+					return -1;
+				}
+			} else {
+				const struct device *dev;
+
+				dev = device_get_binding(ifreq->ifr_name);
+				if (dev == NULL) {
+					errno = ENODEV;
+					return -1;
+				}
+
+				iface = net_if_lookup_by_dev(dev);
+				if (iface == NULL) {
+					errno = ENODEV;
+					return -1;
+				}
 			}
 
 			net_context_set_iface(ctx, iface);
@@ -2478,13 +2505,12 @@ int zsock_getsockname_ctx(struct net_context *ctx, struct sockaddr *addr,
 {
 	socklen_t newlen = 0;
 
-	/* If we don't have a connection handler, the socket is not bound */
-	if (!ctx->conn_handler) {
-		SET_ERRNO(-EINVAL);
-	}
-
 	if (IS_ENABLED(CONFIG_NET_IPV4) && ctx->local.family == AF_INET) {
 		struct sockaddr_in addr4 = { 0 };
+
+		if (net_sin_ptr(&ctx->local)->sin_addr == NULL) {
+			SET_ERRNO(-EINVAL);
+		}
 
 		addr4.sin_family = AF_INET;
 		addr4.sin_port = net_sin_ptr(&ctx->local)->sin_port;
@@ -2496,6 +2522,10 @@ int zsock_getsockname_ctx(struct net_context *ctx, struct sockaddr *addr,
 	} else if (IS_ENABLED(CONFIG_NET_IPV6) &&
 		   ctx->local.family == AF_INET6) {
 		struct sockaddr_in6 addr6 = { 0 };
+
+		if (net_sin6_ptr(&ctx->local)->sin6_addr == NULL) {
+			SET_ERRNO(-EINVAL);
+		}
 
 		addr6.sin6_family = AF_INET6;
 		addr6.sin6_port = net_sin6_ptr(&ctx->local)->sin6_port;

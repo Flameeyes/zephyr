@@ -585,7 +585,7 @@ static int tcp_conn_unref(struct tcp *conn)
 
 	memset(conn, 0, sizeof(*conn));
 
-	k_mem_slab_free(&tcp_conns_slab, (void **)&conn);
+	k_mem_slab_free(&tcp_conns_slab, (void *)conn);
 
 	k_mutex_unlock(&tcp_lock);
 
@@ -1656,7 +1656,7 @@ fail:
 		conn->queue_recv_data = NULL;
 	}
 
-	k_mem_slab_free(&tcp_conns_slab, (void **)&conn);
+	k_mem_slab_free(&tcp_conns_slab, (void *)conn);
 	return NULL;
 }
 
@@ -2276,7 +2276,7 @@ static enum net_verdict tcp_in(struct tcp *conn, struct net_pkt *pkt)
 		tcp_out(conn, RST);
 		do_close = true;
 		close_status = -ECONNRESET;
-		goto next_state;
+		goto out;
 	}
 
 	if (FL(&fl, &, RST)) {
@@ -2292,7 +2292,7 @@ static enum net_verdict tcp_in(struct tcp *conn, struct net_pkt *pkt)
 		net_stats_update_tcp_seg_rst(net_pkt_iface(pkt));
 		do_close = true;
 		close_status = -ECONNRESET;
-		goto next_state;
+		goto out;
 	}
 
 	if (tcp_options_len && !tcp_options_check(&conn->recv_options, pkt,
@@ -2301,7 +2301,7 @@ static enum net_verdict tcp_in(struct tcp *conn, struct net_pkt *pkt)
 		tcp_out(conn, RST);
 		do_close = true;
 		close_status = -ECONNRESET;
-		goto next_state;
+		goto out;
 	}
 
 	if (th && (conn->state != TCP_LISTEN) && (conn->state != TCP_SYN_SENT) &&
@@ -2316,7 +2316,7 @@ static enum net_verdict tcp_in(struct tcp *conn, struct net_pkt *pkt)
 		tcp_out(conn, RST);
 		do_close = true;
 		close_status = -ECONNRESET;
-		goto next_state;
+		goto out;
 	}
 
 	if (th) {
@@ -2377,26 +2377,38 @@ next_state:
 	case TCP_SYN_RECEIVED:
 		if (FL(&fl, &, ACK, th_ack(th) == conn->seq &&
 				th_seq(th) == conn->ack)) {
+			net_tcp_accept_cb_t accept_cb = NULL;
+			struct net_context *context = NULL;
+
+			if (conn->accepted_conn != NULL) {
+				accept_cb = conn->accepted_conn->accept_cb;
+				context = conn->accepted_conn->context;
+			}
+
 			k_work_cancel_delayable(&conn->establish_timer);
 			tcp_send_timer_cancel(conn);
-			next = TCP_ESTABLISHED;
 			tcp_conn_ref(conn);
 			net_context_set_state(conn->context,
 					      NET_CONTEXT_CONNECTED);
 
-			if (conn->accepted_conn) {
-				if (conn->accepted_conn->accept_cb) {
-					conn->accepted_conn->accept_cb(
-						conn->context,
-						&conn->accepted_conn->context->remote,
-						sizeof(struct sockaddr), 0,
-						conn->accepted_conn->context);
-				}
+			/* Make sure the accept_cb is only called once. */
+			conn->accepted_conn = NULL;
 
-				/* Make sure the accept_cb is only called once.
+			if (accept_cb == NULL) {
+				/* In case of no accept_cb registered,
+				 * application will not take ownership of the
+				 * connection. To prevent connection leak, unref
+				 * the TCP context and put the connection into
+				 * active close (TCP_FIN_WAIT_1).
 				 */
-				conn->accepted_conn = NULL;
+				net_tcp_put(conn->context);
+				break;
 			}
+
+			accept_cb(conn->context, &context->remote,
+				  sizeof(struct sockaddr), 0, context);
+
+			next = TCP_ESTABLISHED;
 
 			tcp_ca_init(conn);
 
@@ -2892,6 +2904,7 @@ next_state:
 			   tcp_state_to_str(conn->state, true));
 	}
 
+out:
 	if (pkt) {
 		if (verdict == NET_OK) {
 			net_pkt_unref(pkt);
@@ -2974,7 +2987,8 @@ int net_tcp_put(struct net_context *context)
 		({ const char *state = net_context_state(context);
 					state ? state : "<unknown>"; }));
 
-	if (conn && conn->state == TCP_ESTABLISHED) {
+	if (conn && (conn->state == TCP_ESTABLISHED ||
+		     conn->state == TCP_SYN_RECEIVED)) {
 		/* Send all remaining data if possible. */
 		if (conn->send_data_total > 0) {
 			NET_DBG("conn %p pending %zu bytes", conn,

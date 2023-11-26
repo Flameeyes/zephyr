@@ -43,6 +43,11 @@
 		sense-gain-mult = <100>;
 	};
 
+	enable_sink: enable_sink {
+		compatible = "microchip,ev11l78a-ensink";
+		gpios = <&porta 22 GPIO_ACTIVE_HIGH>;
+	};
+
 };
 
 &cpu0 {
@@ -120,5 +125,12 @@
 	};
 
 	pinctrl-0 = <&adc_default>;
+	pinctrl-names = "default";
+};
+
+&dac0 {
+	status = "okay";
+
+	pinctrl-0 = <&dac_default>;
 	pinctrl-names = "default";
 };

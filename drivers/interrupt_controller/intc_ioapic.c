@@ -89,7 +89,6 @@ DEVICE_MMIO_TOPLEVEL_STATIC(ioapic_regs, DT_DRV_INST(0));
 static __pinned_bss uint32_t ioapic_rtes;
 
 #ifdef CONFIG_PM_DEVICE
-#include <zephyr/pm/device.h>
 
 #define BITS_PER_IRQ  4
 #define IOAPIC_BITFIELD_HI_LO	0
@@ -543,7 +542,7 @@ static void IoApicRedUpdateLo(unsigned int irq,
 	ioApicRedSetLo(irq, (ioApicRedGetLo(irq) & ~mask) | (value & mask));
 }
 
-PM_DEVICE_DEFINE(ioapic, ioapic_pm_action);
+PM_DEVICE_DT_INST_DEFINE(0, ioapic_pm_action);
 
-DEVICE_DEFINE(ioapic, "ioapic", ioapic_init, PM_DEVICE_GET(ioapic), NULL, NULL,
-	      PRE_KERNEL_1, CONFIG_INTC_INIT_PRIORITY, NULL);
+DEVICE_DT_INST_DEFINE(0, ioapic_init, PM_DEVICE_DT_INST_GET(0), NULL, NULL,
+		      PRE_KERNEL_1, CONFIG_INTC_INIT_PRIORITY, NULL);

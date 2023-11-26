@@ -332,7 +332,7 @@ struct bt_mesh_cfg_cli_cb {
 /** Mesh Configuration Client Model Context */
 struct bt_mesh_cfg_cli {
 	/** Composition data model entry pointer. */
-	struct bt_mesh_model *model;
+	const struct bt_mesh_model *model;
 
 	/** Optional callback for Mesh Configuration Client Status messages. */
 	const struct bt_mesh_cfg_cli_cb *cb;
@@ -1690,6 +1690,7 @@ uint16_t bt_mesh_comp_p0_elem_mod(struct bt_mesh_comp_p0_elem *elem, int idx);
  */
 struct bt_mesh_mod_id_vnd bt_mesh_comp_p0_elem_mod_vnd(struct bt_mesh_comp_p0_elem *elem, int idx);
 
+/** Composition data page 1 element representation */
 struct bt_mesh_comp_p1_elem {
 	/** The number of SIG models in this element */
 	size_t nsig;

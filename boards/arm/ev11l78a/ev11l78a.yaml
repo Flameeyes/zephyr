@@ -10,7 +10,9 @@ toolchain:
   - xtools
 supported:
   - adc
+  - dac
   - gpio
   - i2c
   - spi
   - uart
+vendor: atmel

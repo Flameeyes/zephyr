@@ -12,13 +12,17 @@
 #include <mmu.h>
 #include <zephyr/init.h>
 #include <kernel_internal.h>
-#include <zephyr/syscall_handler.h>
+#include <zephyr/internal/syscall_handler.h>
 #include <zephyr/toolchain.h>
 #include <zephyr/linker/linker-defs.h>
 #include <zephyr/sys/bitarray.h>
 #include <zephyr/timing/timing.h>
 #include <zephyr/logging/log.h>
 LOG_MODULE_DECLARE(os, CONFIG_KERNEL_LOG_LEVEL);
+
+#ifdef CONFIG_DEMAND_PAGING
+#include <zephyr/kernel/mm/demand_paging.h>
+#endif
 
 /*
  * General terminology:
@@ -469,7 +473,9 @@ static int virt_to_page_frame(void *virt, uintptr_t *phys)
 		if (z_page_frame_is_mapped(pf)) {
 			if (virt == pf->addr) {
 				ret = 0;
-				*phys = z_page_frame_to_phys(pf);
+				if (phys != NULL) {
+					*phys = z_page_frame_to_phys(pf);
+				}
 				break;
 			}
 		}

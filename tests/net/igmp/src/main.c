@@ -28,7 +28,7 @@ LOG_MODULE_REGISTER(net_test, CONFIG_NET_IPV4_LOG_LEVEL);
 #include <zephyr/net/net_event.h>
 #include <zephyr/net/igmp.h>
 
-#include <zephyr/random/rand32.h>
+#include <zephyr/random/random.h>
 
 #include "ipv4.h"
 
@@ -236,7 +236,7 @@ static void join_group(void)
 {
 	int ret;
 
-	ret = net_ipv4_igmp_join(net_iface, &mcast_addr);
+	ret = net_ipv4_igmp_join(net_iface, &mcast_addr, NULL);
 
 	if (ignore_already) {
 		zassert_true(ret == 0 || ret == -EALREADY,
